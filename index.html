@@ -1,0 +1,1769 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Content System Partner — Wien 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════════
+   TOKENS & RESET
+═══════════════════════════════════════════════════════ */
+:root {
+  --black:   #050505;
+  --ink:     #0A0A0A;
+  --surface: #111111;
+  --panel:   #161616;
+  --border:  rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.12);
+  --white:   #F8F5EF;
+  --cream:   #E8E0D0;
+  --muted:   #6B6560;
+  --faint:   #2A2520;
+
+  --gold:    #C9A870;
+  --gold2:   #A07840;
+  --gold-glow: rgba(201,168,112,0.15);
+  --green:   #5A8A6A;
+  --red:     #8A4040;
+
+  --ease:    cubic-bezier(0.16,1,0.3,1);
+  --ease2:   cubic-bezier(0.4,0,0.2,1);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--black);
+  color: var(--white);
+  overflow-x: hidden;
+  cursor: none;
+}
+a { color: inherit; text-decoration: none; }
+button { font-family: inherit; cursor: none; border: none; background: none; }
+canvas { display: block; }
+
+/* ═══════════════════════════════════════════════════════
+   CUSTOM CURSOR
+═══════════════════════════════════════════════════════ */
+#cursor {
+  position: fixed; top: 0; left: 0; z-index: 9999;
+  pointer-events: none; mix-blend-mode: difference;
+}
+#cursor-dot {
+  position: absolute; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--white); transform: translate(-50%,-50%);
+  transition: width 0.3s var(--ease), height 0.3s var(--ease);
+}
+#cursor-ring {
+  position: absolute; width: 32px; height: 32px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.5);
+  transform: translate(-50%,-50%);
+  transition: all 0.15s var(--ease2);
+}
+body:has(a:hover) #cursor-ring,
+body:has(button:hover) #cursor-ring { width: 48px; height: 48px; opacity: 0.6; }
+
+/* ═══════════════════════════════════════════════════════
+   NAV
+═══════════════════════════════════════════════════════ */
+#nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  height: 60px; display: flex; align-items: center;
+  padding: 0 3rem; justify-content: space-between;
+  background: rgba(5,5,5,0); backdrop-filter: blur(0px);
+  transition: background 0.5s, backdrop-filter 0.5s, border-color 0.5s;
+  border-bottom: 1px solid transparent;
+}
+#nav.scrolled {
+  background: rgba(5,5,5,0.85); backdrop-filter: blur(20px);
+  border-bottom-color: var(--border);
+}
+.nav-logo {
+  font-family: 'Cinzel', serif; font-size: 0.75rem; font-weight: 500;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--cream);
+  opacity: 0; transform: translateY(-8px);
+  transition: opacity 0.5s, transform 0.5s;
+}
+#nav.scrolled .nav-logo { opacity: 1; transform: translateY(0); }
+.nav-links { display: flex; gap: 2.5rem; }
+.nav-link {
+  font-size: 0.72rem; font-weight: 400; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+  transition: color 0.2s; cursor: none;
+}
+.nav-link:hover { color: var(--white); }
+.nav-cta {
+  font-size: 0.72rem; font-weight: 500; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--black);
+  background: var(--gold); padding: 0.5rem 1.25rem;
+  transition: background 0.2s, transform 0.2s;
+}
+.nav-cta:hover { background: var(--cream); transform: translateY(-1px); }
+
+/* ═══════════════════════════════════════════════════════
+   SCROLL REVEAL ENGINE
+═══════════════════════════════════════════════════════ */
+.reveal {
+  opacity: 0; transform: translateY(40px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-left {
+  opacity: 0; transform: translateX(-60px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+}
+.reveal-left.visible { opacity: 1; transform: translateX(0); }
+.reveal-right {
+  opacity: 0; transform: translateX(60px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+}
+.reveal-right.visible { opacity: 1; transform: translateX(0); }
+.reveal-scale {
+  opacity: 0; transform: scale(0.92);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+}
+.reveal-scale.visible { opacity: 1; transform: scale(1); }
+[data-delay="1"] { transition-delay: 0.1s; }
+[data-delay="2"] { transition-delay: 0.2s; }
+[data-delay="3"] { transition-delay: 0.3s; }
+[data-delay="4"] { transition-delay: 0.4s; }
+[data-delay="5"] { transition-delay: 0.5s; }
+[data-delay="6"] { transition-delay: 0.6s; }
+
+/* ═══════════════════════════════════════════════════════
+   SECTION BASE
+═══════════════════════════════════════════════════════ */
+section { position: relative; overflow: hidden; }
+.section-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem; font-weight: 500; letter-spacing: 0.3em;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 1.5rem;
+}
+.section-h {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2rem,5vw,4rem);
+  font-weight: 400; line-height: 1.05; letter-spacing: -0.01em;
+  color: var(--white);
+}
+.section-sub {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.1rem,2.5vw,1.5rem);
+  font-weight: 300; font-style: italic;
+  color: var(--muted); line-height: 1.6; margin-top: 1rem;
+}
+.body-text {
+  font-size: 0.9rem; font-weight: 300;
+  color: rgba(248,245,239,0.55); line-height: 1.85;
+}
+
+/* ═══════════════════════════════════════════════════════
+   1. HERO
+═══════════════════════════════════════════════════════ */
+#hero {
+  min-height: 100vh; display: flex; flex-direction: column;
+  justify-content: flex-end; padding: 0 3rem 5rem;
+  position: relative;
+}
+.hero-canvas {
+  position: absolute; inset: 0; overflow: hidden;
+}
+.hero-canvas canvas { width: 100% !important; height: 100% !important; }
+.hero-grain {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  opacity: 0.4;
+}
+.hero-gradient {
+  position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: radial-gradient(ellipse 80% 60% at 50% 100%,rgba(5,5,5,0.95) 0%,rgba(5,5,5,0.4) 60%,transparent 100%);
+}
+.hero-content {
+  position: relative; z-index: 10; max-width: 1000px;
+}
+.hero-eyebrow {
+  display: inline-flex; align-items: center; gap: 0.75rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem; font-weight: 500; letter-spacing: 0.3em;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 2.5rem;
+}
+.hero-dot {
+  width: 4px; height: 4px; border-radius: 50%; background: var(--gold);
+  animation: blink 2s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+.hero-h1 {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(3.5rem, 9vw, 8rem);
+  font-weight: 400; line-height: 0.95; letter-spacing: -0.02em;
+  color: var(--white); margin-bottom: 0.4em;
+}
+.hero-h1 .accent { color: var(--gold); font-style: normal; }
+.hero-h1 .thin {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300; font-style: italic; color: var(--cream);
+}
+.hero-sub {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.2rem, 2.5vw, 1.7rem);
+  font-weight: 300; font-style: italic;
+  color: var(--muted); line-height: 1.55; max-width: 680px;
+  margin-bottom: 3rem;
+}
+.hero-stats {
+  display: flex; gap: 3rem; padding-top: 3rem;
+  border-top: 1px solid var(--border);
+}
+.h-stat-n {
+  font-family: 'Cinzel', serif;
+  font-size: 2.4rem; font-weight: 400; color: var(--gold);
+  line-height: 1; margin-bottom: 0.3rem;
+}
+.h-stat-l {
+  font-size: 0.68rem; font-weight: 300;
+  color: var(--muted); letter-spacing: 0.04em; line-height: 1.5;
+}
+.hero-scroll {
+  position: absolute; bottom: 2.5rem; right: 3rem; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  font-family: 'Cinzel', serif; font-size: 0.55rem;
+  letter-spacing: 0.25em; text-transform: uppercase; color: var(--muted);
+}
+.scroll-line {
+  width: 1px; height: 60px; background: linear-gradient(to bottom, transparent, var(--gold));
+  animation: scrollLine 2s ease-in-out infinite;
+}
+@keyframes scrollLine { 0%,100%{transform:scaleY(0);transform-origin:top} 50%{transform:scaleY(1);transform-origin:top} 51%{transform-origin:bottom} }
+
+/* ═══════════════════════════════════════════════════════
+   2. OPPORTUNITY
+═══════════════════════════════════════════════════════ */
+#opportunity {
+  padding: 10rem 3rem;
+  background: var(--black);
+}
+.opp-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6rem;
+  align-items: center; max-width: 1200px; margin: 0 auto;
+}
+.opp-nums {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--border); border: 1px solid var(--border);
+}
+.opp-num {
+  background: var(--ink); padding: 2rem 1.75rem;
+  position: relative; overflow: hidden;
+  transition: background 0.3s;
+}
+.opp-num:hover { background: var(--panel); }
+.opp-num::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 0%; height: 1px; background: var(--gold);
+  transition: width 0.5s var(--ease);
+}
+.opp-num:hover::before { width: 100%; }
+.on-n {
+  font-family: 'Cinzel', serif;
+  font-size: 2.2rem; font-weight: 400; color: var(--gold);
+  line-height: 1; margin-bottom: 0.4rem;
+}
+.on-l { font-size: 0.72rem; font-weight: 300; color: var(--muted); line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════════════
+   3. MARKET GAP — POSITIONING MATRIX
+═══════════════════════════════════════════════════════ */
+#matrix {
+  padding: 10rem 3rem;
+  background: var(--ink);
+}
+.matrix-wrap { max-width: 1200px; margin: 0 auto; }
+.matrix-intro { max-width: 680px; margin-bottom: 5rem; }
+
+.matrix-container {
+  position: relative; width: 100%; aspect-ratio: 1;
+  max-width: 700px; margin: 0 auto;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.matrix-axis-x, .matrix-axis-y {
+  position: absolute; background: var(--border2);
+}
+.matrix-axis-x { left: 0; right: 0; top: 50%; height: 1px; }
+.matrix-axis-y { top: 0; bottom: 0; left: 50%; width: 1px; }
+.matrix-label {
+  position: absolute; font-family: 'Cinzel', serif;
+  font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--muted);
+}
+.ml-top { top: 1rem; left: 50%; transform: translateX(-50%); }
+.ml-bottom { bottom: 1rem; left: 50%; transform: translateX(-50%); }
+.ml-left { left: 1rem; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.ml-right { right: 1rem; top: 50%; transform: translateY(-50%) rotate(90deg); }
+
+.matrix-dot {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: none;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s;
+}
+.matrix-dot:hover { transform: translate(-50%,-50%) scale(1.3); }
+.matrix-dot .dot-inner {
+  width: 100%; height: 100%; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.matrix-dot .dot-label {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  white-space: nowrap; font-size: 0.65rem; font-weight: 400;
+  pointer-events: none; transition: opacity 0.2s;
+}
+.matrix-tooltip {
+  position: absolute; z-index: 50;
+  background: var(--panel); border: 1px solid var(--border2);
+  padding: 0.75rem 1rem; max-width: 200px; pointer-events: none;
+  opacity: 0; transition: opacity 0.2s;
+}
+.matrix-tooltip.show { opacity: 1; }
+.mt-name {
+  font-family: 'Cinzel', serif; font-size: 0.65rem;
+  letter-spacing: 0.1em; color: var(--white); margin-bottom: 0.25rem;
+}
+.mt-desc { font-size: 0.68rem; font-weight: 300; color: var(--muted); line-height: 1.4; }
+
+/* ═══════════════════════════════════════════════════════
+   4. THE SYSTEM
+═══════════════════════════════════════════════════════ */
+#system {
+  padding: 10rem 0;
+  background: var(--black);
+}
+.system-intro {
+  text-align: center; max-width: 700px;
+  margin: 0 auto 7rem; padding: 0 3rem;
+}
+.system-flow {
+  display: flex; align-items: stretch;
+  overflow-x: auto; gap: 0;
+  padding: 0 3rem;
+  scroll-snap-type: x mandatory;
+}
+.system-flow::-webkit-scrollbar { display: none; }
+.flow-step {
+  flex: 0 0 280px; scroll-snap-align: start;
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 3rem 2rem; position: relative;
+  transition: background 0.3s, border-color 0.3s;
+  cursor: none;
+}
+.flow-step:not(:last-child) { border-right: none; }
+.flow-step:hover { background: var(--panel); border-color: var(--border2); }
+.flow-step.active { background: var(--faint); border-color: var(--gold); }
+.flow-num {
+  font-family: 'Cinzel', serif;
+  font-size: 4rem; font-weight: 400; color: var(--faint);
+  line-height: 1; margin-bottom: 1.5rem;
+  transition: color 0.3s;
+}
+.flow-step.active .flow-num { color: var(--gold); opacity: 0.4; }
+.flow-step:hover .flow-num { color: var(--border2); }
+.flow-icon { font-size: 1.8rem; margin-bottom: 1rem; }
+.flow-title {
+  font-family: 'Cinzel', serif; font-size: 0.8rem;
+  font-weight: 500; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--white);
+  margin-bottom: 0.75rem;
+}
+.flow-step.active .flow-title { color: var(--gold); }
+.flow-desc { font-size: 0.8rem; font-weight: 300; color: var(--muted); line-height: 1.7; }
+.flow-output {
+  margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+  font-size: 0.68rem; font-weight: 500; letter-spacing: 0.08em;
+  color: var(--gold); text-transform: uppercase;
+}
+.flow-arrow {
+  position: absolute; right: -1px; top: 50%; transform: translateY(-50%);
+  width: 24px; height: 24px; background: var(--gold);
+  clip-path: polygon(0 0, 0 100%, 100% 50%);
+  z-index: 5;
+}
+.flow-step:last-child .flow-arrow { display: none; }
+
+/* ═══════════════════════════════════════════════════════
+   5. MARKET POTENTIAL — CHARTS
+═══════════════════════════════════════════════════════ */
+#potential {
+  padding: 10rem 3rem;
+  background: var(--ink);
+}
+.potential-wrap { max-width: 1200px; margin: 0 auto; }
+.potential-header { text-align: center; max-width: 700px; margin: 0 auto 6rem; }
+.charts-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  background: var(--border); border: 1px solid var(--border);
+  margin-bottom: 1px;
+}
+.chart-card {
+  background: var(--surface); padding: 2.5rem;
+}
+.chart-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem; font-weight: 500; letter-spacing: 0.2em;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 0.5rem;
+}
+.chart-title {
+  font-family: 'Cinzel', serif; font-size: 1.1rem;
+  font-weight: 400; color: var(--white); margin-bottom: 0.4rem;
+}
+.chart-sub {
+  font-size: 0.75rem; font-weight: 300; color: var(--muted);
+  margin-bottom: 1.75rem; line-height: 1.5;
+}
+.chart-h { position: relative; height: 240px; }
+.chart-full {
+  background: var(--surface); padding: 2.5rem;
+  border: 1px solid var(--border); border-top: none;
+}
+
+/* TAM rings */
+.tam-viz {
+  display: flex; align-items: center; justify-content: center;
+  gap: 3rem; padding: 2rem 0;
+}
+.tam-ring-wrap { text-align: center; }
+.tam-ring {
+  width: 100px; height: 100px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; margin: 0 auto 1rem;
+}
+.tam-ring::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  animation: ringPulse 3s ease-in-out infinite;
+}
+.tam-t { border: 2px solid rgba(201,168,112,0.3); }
+.tam-t::before { background: rgba(201,168,112,0.05); }
+.tam-s { border: 2px solid rgba(201,168,112,0.6); }
+.tam-s::before { background: rgba(201,168,112,0.1); }
+.tam-o { border: 2px solid var(--gold); background: rgba(201,168,112,0.15); }
+.tam-o::before { background: rgba(201,168,112,0.15); animation-delay: 0.5s; }
+@keyframes ringPulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.08);opacity:0.6} }
+.tam-n {
+  font-family: 'Cinzel', serif; font-size: 0.85rem;
+  font-weight: 400; color: var(--white);
+}
+.tam-l { font-size: 0.65rem; color: var(--muted); }
+
+/* ═══════════════════════════════════════════════════════
+   6. TARGET PROFILES
+═══════════════════════════════════════════════════════ */
+#profiles {
+  padding: 10rem 3rem;
+  background: var(--black);
+}
+.profiles-wrap { max-width: 1200px; margin: 0 auto; }
+.profiles-header { max-width: 600px; margin-bottom: 5rem; }
+.profiles-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; background: var(--border); border: 1px solid var(--border);
+}
+.profile-card {
+  background: var(--surface); padding: 2rem 1.75rem;
+  position: relative; overflow: hidden;
+  cursor: none; transition: background 0.3s;
+}
+.profile-card:hover { background: var(--panel); }
+.profile-card::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 2px; background: var(--gold);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.5s var(--ease);
+}
+.profile-card:hover::after { transform: scaleX(1); }
+.profile-icon { font-size: 2rem; margin-bottom: 1.25rem; }
+.profile-badge {
+  font-family: 'Cinzel', serif;
+  font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase;
+  padding: 0.2rem 0.6rem; margin-bottom: 1rem; display: inline-block;
+}
+.pb-prim { color: var(--gold); border: 1px solid rgba(201,168,112,0.3); background: rgba(201,168,112,0.06); }
+.pb-sec { color: var(--muted); border: 1px solid var(--border); background: transparent; }
+.profile-name {
+  font-family: 'Cinzel', serif; font-size: 0.85rem;
+  font-weight: 500; letter-spacing: 0.06em;
+  color: var(--white); margin-bottom: 0.3rem;
+}
+.profile-size { font-size: 0.72rem; color: var(--muted); margin-bottom: 1.25rem; font-weight: 300; }
+.profile-budget {
+  font-family: 'Cinzel', serif; font-size: 1.1rem;
+  color: var(--gold); margin-bottom: 1rem;
+}
+.profile-meter { margin-bottom: 0.4rem; }
+.pm-label { font-size: 0.62rem; color: var(--muted); margin-bottom: 0.3rem; display: flex; justify-content: space-between; }
+.pm-track { height: 2px; background: var(--faint); position: relative; overflow: hidden; }
+.pm-fill { height: 100%; background: var(--gold); width: 0%; transition: width 1.5s var(--ease); }
+.profile-pain {
+  margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border);
+  font-size: 0.7rem; font-weight: 300; color: var(--muted); line-height: 1.65;
+  font-style: italic;
+}
+
+/* ═══════════════════════════════════════════════════════
+   7. PACKAGES
+═══════════════════════════════════════════════════════ */
+#packages {
+  padding: 10rem 3rem;
+  background: var(--ink);
+}
+.packages-wrap { max-width: 1200px; margin: 0 auto; }
+.packages-header { text-align: center; max-width: 700px; margin: 0 auto 5rem; }
+.packages-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border); border: 1px solid var(--border);
+}
+.pkg {
+  background: var(--surface); padding: 0;
+  display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  transition: transform 0.4s var(--ease);
+}
+.pkg:hover { transform: translateY(-4px); z-index: 5; }
+.pkg.featured { background: var(--black); }
+.pkg.featured::before {
+  content: 'Most Popular'; position: absolute; top: 0; right: 0;
+  font-family: 'Cinzel', serif; font-size: 0.5rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  background: var(--gold); color: var(--black);
+  padding: 0.3rem 0.8rem;
+}
+.pkg-top { padding: 2.5rem 2rem; border-bottom: 1px solid var(--border); flex: 0; }
+.pkg-tier {
+  font-family: 'Cinzel', serif; font-size: 0.55rem;
+  letter-spacing: 0.25em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 1rem;
+}
+.pkg.featured .pkg-tier { color: var(--gold); }
+.pkg-name {
+  font-family: 'Cinzel', serif; font-size: 1.8rem;
+  font-weight: 400; color: var(--white); margin-bottom: 0.75rem;
+}
+.pkg-price {
+  font-family: 'Cinzel', serif; font-size: 2.2rem;
+  font-weight: 400; color: var(--gold); line-height: 1;
+}
+.pkg-price sub { font-size: 0.7rem; font-weight: 300; color: var(--muted); }
+.pkg-desc {
+  font-size: 0.78rem; font-weight: 300; color: var(--muted);
+  margin-top: 0.75rem; line-height: 1.6;
+}
+.pkg-feats { padding: 2rem; flex: 1; }
+.pkg-feat {
+  display: flex; gap: 0.75rem; margin-bottom: 0.75rem;
+  font-size: 0.8rem; font-weight: 300; color: rgba(248,245,239,0.6);
+  line-height: 1.4;
+}
+.pkg-feat::before {
+  content: '→'; color: var(--gold); flex-shrink: 0;
+  font-size: 0.75rem; margin-top: 0.1rem;
+}
+.pkg.featured .pkg-feat { color: rgba(248,245,239,0.75); }
+.pkg-foot { padding: 1.5rem 2rem; border-top: 1px solid var(--border); }
+.pkg-btn {
+  display: block; width: 100%; padding: 0.85rem;
+  font-family: 'Cinzel', serif; font-size: 0.65rem;
+  font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase;
+  text-align: center; cursor: none; transition: all 0.3s;
+  border: 1px solid var(--border);
+  color: var(--muted); background: transparent;
+}
+.pkg.featured .pkg-btn {
+  background: var(--gold); color: var(--black); border-color: var(--gold);
+}
+.pkg-btn:hover { background: var(--gold); color: var(--black); border-color: var(--gold); }
+
+/* ═══════════════════════════════════════════════════════
+   8. CASE VISUALIZATIONS
+═══════════════════════════════════════════════════════ */
+#cases {
+  padding: 10rem 3rem;
+  background: var(--black);
+}
+.cases-wrap { max-width: 1200px; margin: 0 auto; }
+.cases-header { max-width: 600px; margin-bottom: 5rem; }
+
+.case-tabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  margin-bottom: 3rem;
+}
+.case-tab {
+  padding: 1rem 1.75rem; font-family: 'Cinzel', serif;
+  font-size: 0.6rem; font-weight: 500; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--muted);
+  cursor: none; border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  margin-bottom: -1px;
+}
+.case-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+.case-tab:hover { color: var(--white); }
+
+.case-panel { display: none; }
+.case-panel.active { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+
+.case-context { }
+.case-badge {
+  display: inline-block; font-family: 'Cinzel', serif;
+  font-size: 0.5rem; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--gold); border: 1px solid rgba(201,168,112,0.3);
+  padding: 0.25rem 0.65rem; margin-bottom: 1.25rem;
+  background: rgba(201,168,112,0.06);
+}
+.case-name {
+  font-family: 'Cinzel', serif; font-size: 1.6rem;
+  font-weight: 400; color: var(--white); margin-bottom: 0.75rem;
+  line-height: 1.2;
+}
+.case-desc {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem; font-weight: 300; font-style: italic;
+  color: var(--muted); line-height: 1.65; margin-bottom: 2rem;
+}
+.case-metrics {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border); border: 1px solid var(--border);
+}
+.cm-block { background: var(--panel); padding: 1.25rem 1rem; text-align: center; }
+.cm-n {
+  font-family: 'Cinzel', serif; font-size: 1.4rem;
+  color: var(--gold); line-height: 1; margin-bottom: 0.25rem;
+}
+.cm-l { font-size: 0.62rem; color: var(--muted); line-height: 1.4; }
+.case-timeline { }
+.tl-item {
+  display: flex; gap: 1.25rem; margin-bottom: 1.5rem;
+  opacity: 0; transform: translateX(20px);
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+}
+.tl-item.show { opacity: 1; transform: translateX(0); }
+.tl-left { display: flex; flex-direction: column; align-items: center; gap: 0; flex-shrink: 0; }
+.tl-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 1px solid var(--gold); background: transparent;
+  transition: background 0.3s;
+}
+.tl-item.show .tl-dot { background: var(--gold); }
+.tl-line { flex: 1; width: 1px; background: var(--border); min-height: 30px; }
+.tl-month {
+  font-family: 'Cinzel', serif; font-size: 0.55rem;
+  letter-spacing: 0.15em; color: var(--gold); margin-bottom: 0.3rem;
+}
+.tl-event { font-size: 0.8rem; font-weight: 300; color: rgba(248,245,239,0.7); line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════════════
+   9. GO-TO-MARKET TIMELINE
+═══════════════════════════════════════════════════════ */
+#gtm {
+  padding: 10rem 3rem;
+  background: var(--ink);
+}
+.gtm-wrap { max-width: 1200px; margin: 0 auto; }
+.gtm-header { text-align: center; max-width: 700px; margin: 0 auto 5rem; }
+.gtm-phases {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border); border: 1px solid var(--border);
+  margin-bottom: 4rem;
+}
+.gtm-phase { background: var(--surface); padding: 2.5rem 2rem; }
+.phase-num {
+  font-family: 'Cinzel', serif; font-size: 3.5rem;
+  font-weight: 400; color: var(--faint); line-height: 1;
+  margin-bottom: 0.5rem;
+}
+.phase-period {
+  font-family: 'Cinzel', serif; font-size: 0.6rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 1rem;
+}
+.phase-goal {
+  font-family: 'Cinzel', serif; font-size: 1rem;
+  font-weight: 400; color: var(--white); margin-bottom: 1rem;
+}
+.phase-actions { list-style: none; }
+.phase-actions li {
+  font-size: 0.78rem; font-weight: 300; color: var(--muted);
+  padding: 0.4rem 0 0.4rem 1rem; position: relative;
+  border-bottom: 1px solid var(--faint); line-height: 1.4;
+}
+.phase-actions li::before {
+  content: '—'; position: absolute; left: 0;
+  color: var(--gold); font-size: 0.7rem;
+}
+.phase-kpi {
+  margin-top: 1.5rem; padding: 1rem;
+  background: var(--faint); border-left: 2px solid var(--gold);
+}
+.phase-kpi-label {
+  font-family: 'Cinzel', serif; font-size: 0.5rem;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 0.5rem;
+}
+.phase-kpi-val { font-size: 0.8rem; font-weight: 500; color: var(--white); }
+
+.gtm-chart-wrap {
+  background: var(--surface); border: 1px solid var(--border); padding: 2.5rem;
+}
+.gc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 2rem; }
+.gc-label {
+  font-family: 'Cinzel', serif; font-size: 0.6rem;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold);
+  margin-bottom: 0.3rem;
+}
+.gc-title {
+  font-family: 'Cinzel', serif; font-size: 1.1rem;
+  font-weight: 400; color: var(--white);
+}
+.gc-target {
+  text-align: right;
+  font-family: 'Cinzel', serif; font-size: 1.6rem;
+  color: var(--gold);
+}
+.gc-target-l { font-size: 0.65rem; color: var(--muted); }
+.gtm-chart-h { height: 260px; position: relative; }
+
+/* ═══════════════════════════════════════════════════════
+   10. PARTNERS
+═══════════════════════════════════════════════════════ */
+#partners {
+  padding: 10rem 3rem;
+  background: var(--black);
+}
+.partners-wrap { max-width: 1200px; margin: 0 auto; }
+.partners-header { text-align: center; max-width: 700px; margin: 0 auto 5rem; }
+.partners-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 1px; background: var(--border); border: 1px solid var(--border);
+}
+.partner-card {
+  background: var(--surface); padding: 3rem 2.5rem;
+  position: relative; overflow: hidden;
+}
+.partner-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0;
+  height: 1px; background: linear-gradient(to right, transparent, var(--gold), transparent);
+  transform: scaleX(0); transform-origin: center;
+  transition: transform 0.6s var(--ease);
+}
+.partner-card:hover::before { transform: scaleX(1); }
+.partner-num {
+  font-family: 'Cinzel', serif; font-size: 0.55rem;
+  letter-spacing: 0.25em; text-transform: uppercase;
+  color: var(--gold); margin-bottom: 1rem;
+}
+.partner-name {
+  font-family: 'Cinzel', serif; font-size: 1.3rem;
+  font-weight: 400; color: var(--white); margin-bottom: 0.3rem;
+}
+.partner-role {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem; font-style: italic; color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+.partner-skills { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.5rem; }
+.partner-skill {
+  font-size: 0.62rem; font-weight: 400;
+  padding: 0.2rem 0.6rem; border: 1px solid var(--border2);
+  color: rgba(248,245,239,0.5);
+}
+.partner-desc { font-size: 0.8rem; font-weight: 300; color: var(--muted); line-height: 1.7; }
+.partner-url {
+  display: inline-block; margin-top: 1rem;
+  font-family: 'Cinzel', serif; font-size: 0.6rem;
+  letter-spacing: 0.1em; color: var(--gold);
+}
+
+/* ═══════════════════════════════════════════════════════
+   11. FOOTER / CTA
+═══════════════════════════════════════════════════════ */
+#cta {
+  padding: 12rem 3rem;
+  background: var(--ink);
+  text-align: center; position: relative; overflow: hidden;
+}
+.cta-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse 70% 60% at 50% 100%, var(--gold-glow), transparent 70%);
+}
+.cta-wrap { position: relative; z-index: 2; max-width: 800px; margin: 0 auto; }
+.cta-h {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 400; line-height: 1.05;
+  letter-spacing: -0.02em; color: var(--white); margin-bottom: 1.5rem;
+}
+.cta-h .gold { color: var(--gold); }
+.cta-sub {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.3rem; font-weight: 300; font-style: italic;
+  color: var(--muted); margin-bottom: 3rem;
+}
+.cta-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn-primary {
+  font-family: 'Cinzel', serif; font-size: 0.7rem;
+  font-weight: 500; letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 1.1rem 2.5rem; background: var(--gold); color: var(--black);
+  cursor: none; transition: all 0.3s var(--ease);
+}
+.btn-primary:hover { background: var(--cream); transform: translateY(-2px); }
+.btn-secondary {
+  font-family: 'Cinzel', serif; font-size: 0.7rem;
+  font-weight: 400; letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 1.1rem 2.5rem; background: transparent;
+  border: 1px solid var(--border2); color: var(--muted);
+  cursor: none; transition: all 0.3s var(--ease);
+}
+.btn-secondary:hover { border-color: var(--gold); color: var(--white); }
+
+#footer {
+  background: var(--black); border-top: 1px solid var(--border);
+  padding: 3rem;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.footer-logo {
+  font-family: 'Cinzel', serif; font-size: 0.7rem;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+}
+.footer-note { font-size: 0.65rem; color: var(--faint); }
+.footer-links { display: flex; gap: 2rem; }
+.footer-link {
+  font-family: 'Cinzel', serif; font-size: 0.55rem;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--muted);
+  transition: color 0.2s; cursor: none;
+}
+.footer-link:hover { color: var(--gold); }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE
+═══════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  body { cursor: auto; }
+  #cursor { display: none; }
+  .nav-links { display: none; }
+  .opp-grid, .charts-grid, .profiles-grid,
+  .packages-grid, .gtm-phases, .partners-grid { grid-template-columns: 1fr; }
+  .case-panel.active { grid-template-columns: 1fr; }
+  .hero-h1 { font-size: clamp(3rem,12vw,6rem); }
+  .hero-stats { flex-direction: column; gap: 1.5rem; }
+  #hero, section { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .system-flow { gap: 0.5rem; }
+  .flow-step { flex: 0 0 240px; }
+  #footer { flex-direction: column; gap: 1rem; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cursor"><div id="cursor-dot"></div><div id="cursor-ring"></div></div>
+
+<!-- ════════════════════ NAV ════════════════════ -->
+<nav id="nav">
+  <div class="nav-logo">Content System Partner</div>
+  <div class="nav-links">
+    <a class="nav-link" href="#opportunity">Markt</a>
+    <a class="nav-link" href="#matrix">Positionierung</a>
+    <a class="nav-link" href="#system">System</a>
+    <a class="nav-link" href="#packages">Pakete</a>
+    <a class="nav-link" href="#cases">Cases</a>
+    <a class="nav-link" href="#gtm">Roadmap</a>
+  </div>
+  <a class="nav-cta" href="#cta">Gespräch anfragen</a>
+</nav>
+
+<!-- ════════════════════ HERO ════════════════════ -->
+<section id="hero">
+  <div class="hero-canvas"><canvas id="hero-canvas"></canvas></div>
+  <div class="hero-grain"></div>
+  <div class="hero-gradient"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow reveal" data-delay="1">
+      <span class="hero-dot"></span>
+      Wien · 2026 · Strategiepapier
+    </div>
+    <h1 class="hero-h1 reveal" data-delay="2">
+      Das integrierte<br>
+      <span class="thin">Mittelfeld</span><br>
+      ist <span class="accent">unbesetzt.</span>
+    </h1>
+    <p class="hero-sub reveal" data-delay="3">
+      Drei Wiener Spezialisten. Ein System. Die einzige Agentur, die professionelle Content-Produktion, KI-gestützte Asset-Verwertung und Performance Marketing in einem Retainer verbindet.
+    </p>
+    <div class="hero-stats reveal" data-delay="4">
+      <div>
+        <div class="h-stat-n" data-count="124389" data-suffix="">124K+</div>
+        <div class="h-stat-l">Wiener Unternehmen<br>im Zielmarkt</div>
+      </div>
+      <div>
+        <div class="h-stat-n">€3,2B</div>
+        <div class="h-stat-l">Digitaler Werbemarkt<br>Österreich 2025</div>
+      </div>
+      <div>
+        <div class="h-stat-n">€50–100M</div>
+        <div class="h-stat-l">Serviceable<br>Addressable Market</div>
+      </div>
+      <div>
+        <div class="h-stat-n">0</div>
+        <div class="h-stat-l">Direkte Wettbewerber<br>mit diesem Modell</div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <span>Scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ════════════════════ OPPORTUNITY ════════════════════ -->
+<section id="opportunity">
+  <div class="opp-grid">
+    <div>
+      <div class="section-label reveal">01 — Marktchance</div>
+      <h2 class="section-h reveal" data-delay="1">Ein Markt<br>in Bewegung.</h2>
+      <p class="section-sub reveal" data-delay="2">Wien wächst digital — aber kein Anbieter bedient das integrierte Mittelfeld.</p>
+      <p class="body-text reveal" data-delay="3" style="margin-top:2rem;max-width:480px;">
+        Der österreichische Digitalwerbemarkt überschreitet 2025 erstmals die €3,2-Mrd.-Marke. 86 % der Ausgaben fließen an globale Plattformen — die Lücke für österreichische Agenturen, die lokale KMU mit integriertem Full-Stack-Marketing bedienen, ist real und wächst. Wiens Rekord-Tourismus (18,86 Mio. Nächtigungen 2024), der boomende E-Commerce-Markt (€11 Mrd.+) und ein Health/Fitness-Sektor mit unter 13 % Marktdurchdringung schaffen ideale Voraussetzungen.
+      </p>
+    </div>
+    <div class="opp-nums reveal-right" data-delay="2">
+      <div class="opp-num">
+        <div class="on-n">€11B+</div>
+        <div class="on-l">E-Commerce Österreich 2025 — +36 % Mobile YoY</div>
+      </div>
+      <div class="opp-num">
+        <div class="on-n">18,86M</div>
+        <div class="on-l">Wiener Nächtigungen 2024 — absoluter Rekord</div>
+      </div>
+      <div class="opp-num">
+        <div class="on-n">6.200+</div>
+        <div class="on-l">Wiener Agenturen — keine besetzt diese Nische</div>
+      </div>
+      <div class="opp-num">
+        <div class="on-n">27%</div>
+        <div class="on-l">Österreichische Agenturen ohne Gewinn — das Feld leidet</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ MATRIX ════════════════════ -->
+<section id="matrix">
+  <div class="matrix-wrap">
+    <div class="matrix-intro">
+      <div class="section-label reveal">02 — Positionierungsmatrix</div>
+      <h2 class="section-h reveal" data-delay="1">Niemand besetzt<br>unseren Platz.</h2>
+      <p class="section-sub reveal" data-delay="2">Analyse aller relevanten Wiener Agentur-Cluster nach Content-Produktionskompetenz und Performance-Marketing-Tiefe.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center;">
+      <div class="reveal-left" data-delay="1">
+        <div class="matrix-container" id="matrix-viz">
+          <div class="matrix-axis-x"></div>
+          <div class="matrix-axis-y"></div>
+          <div class="matrix-label ml-top">Content-Produktion</div>
+          <div class="matrix-label ml-bottom">Kein Content</div>
+          <div class="matrix-label ml-left">Kein Performance</div>
+          <div class="matrix-label ml-right">Performance</div>
+          <div id="matrix-tooltip" class="matrix-tooltip">
+            <div class="mt-name" id="tt-name"></div>
+            <div class="mt-desc" id="tt-desc"></div>
+          </div>
+        </div>
+      </div>
+      <div class="reveal-right" data-delay="2">
+        <div id="matrix-legend"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ SYSTEM ════════════════════ -->
+<section id="system">
+  <div class="system-intro">
+    <div class="section-label reveal">03 — Das System</div>
+    <h2 class="section-h reveal" data-delay="1">Ein Tag.<br>Wochen an Content.</h2>
+    <p class="section-sub reveal" data-delay="2">Der Content Day als Motor — KI-Verwertung als Multiplikator — Performance als Resultat.</p>
+  </div>
+  <div class="system-flow reveal" data-delay="3">
+    <div class="flow-step active" onclick="selectStep(this)">
+      <div class="flow-num">01</div>
+      <div class="flow-icon">📋</div>
+      <div class="flow-title">Pre-Production</div>
+      <div class="flow-desc">Strategische Briefings, Shot Lists, Redaktionsplan, Plattform-Mapping. Alles ist geplant, bevor die Kamera läuft.</div>
+      <div class="flow-output">Output: Shotlist + Redaktionsplan</div>
+      <div class="flow-arrow"></div>
+    </div>
+    <div class="flow-step" onclick="selectStep(this)">
+      <div class="flow-num">02</div>
+      <div class="flow-icon">🎬</div>
+      <div class="flow-title">Content Day</div>
+      <div class="flow-desc">Ein strukturierter Produktionstag. Foto + Video. Batch-Produktion für maximalen Output — professionell, effizient, systemisch.</div>
+      <div class="flow-output">Output: 60–80 Raw Assets</div>
+      <div class="flow-arrow"></div>
+    </div>
+    <div class="flow-step" onclick="selectStep(this)">
+      <div class="flow-num">03</div>
+      <div class="flow-icon">🤖</div>
+      <div class="flow-title">KI-Verwertung</div>
+      <div class="flow-desc">OpusClip, Descript, neuroflash, Adobe Firefly. Automatisiertes Repurposing zu plattformgerechten Formaten — 3× mehr Output, 60 % weniger Zeit.</div>
+      <div class="flow-output">Output: 20–30 fertige Assets</div>
+      <div class="flow-arrow"></div>
+    </div>
+    <div class="flow-step" onclick="selectStep(this)">
+      <div class="flow-num">04</div>
+      <div class="flow-icon">📱</div>
+      <div class="flow-title">Distribution</div>
+      <div class="flow-desc">Redaktionsplan-gestützte Ausspielung auf 3–4 Plattformen. Community Management. Optimal getimte Posts, konsistente Markenstimme.</div>
+      <div class="flow-output">Output: 3–4 Posts/Woche</div>
+      <div class="flow-arrow"></div>
+    </div>
+    <div class="flow-step" onclick="selectStep(this)">
+      <div class="flow-num">05</div>
+      <div class="flow-icon">🎯</div>
+      <div class="flow-title">Performance</div>
+      <div class="flow-desc">Meta, Google und LinkedIn Ads auf Basis desselben Content-Materials. Creative Testing, ROAS-Optimierung, systematisches Scaling.</div>
+      <div class="flow-output">Output: Optimierte Kampagnen</div>
+      <div class="flow-arrow"></div>
+    </div>
+    <div class="flow-step" onclick="selectStep(this)">
+      <div class="flow-num">06</div>
+      <div class="flow-icon">📊</div>
+      <div class="flow-title">Reporting</div>
+      <div class="flow-desc">Business-KPI-Dashboards. Monatliche Reports. Quartalsweiser Strategy Review. Transparenz vom ersten Tag — keine Vanity Metrics.</div>
+      <div class="flow-output">Output: QBR + Monatsbericht</div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ POTENTIAL ════════════════════ -->
+<section id="potential">
+  <div class="potential-wrap">
+    <div class="potential-header">
+      <div class="section-label reveal">04 — Marktpotenzial</div>
+      <h2 class="section-h reveal" data-delay="1">€400–750K<br>Year One.</h2>
+      <p class="section-sub reveal" data-delay="2">Datenbasierte Marktgröße — von TAM bis realisierbarem Erstjahresumsatz.</p>
+    </div>
+    <div class="charts-grid reveal" data-delay="1">
+      <div class="chart-card">
+        <div class="chart-label">TAM / SAM / SOM</div>
+        <div class="chart-title">Marktgröße Österreich</div>
+        <div class="chart-sub">Total → Serviceable → Obtainable Market für Content-Marketing-Services</div>
+        <div class="tam-viz">
+          <div class="tam-ring-wrap">
+            <div class="tam-ring tam-t"><div class="dot-inner"></div></div>
+            <div class="tam-n">TAM</div>
+            <div class="tam-l">€400–600M</div>
+          </div>
+          <div class="tam-ring-wrap">
+            <div class="tam-ring tam-s"><div class="dot-inner"></div></div>
+            <div class="tam-n">SAM</div>
+            <div class="tam-l">€50–100M</div>
+          </div>
+          <div class="tam-ring-wrap">
+            <div class="tam-ring tam-o"><div class="dot-inner"></div></div>
+            <div class="tam-n">SOM Y1</div>
+            <div class="tam-l">€400–750K</div>
+          </div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-label">Branchenvergleich</div>
+        <div class="chart-title">Retainer-Potenzial nach Zielgruppe</div>
+        <div class="chart-sub">Jährlicher Vertragswert pro Branche — Min./Max. in Tsd. €</div>
+        <div class="chart-h"><canvas id="c-potential"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-full reveal" data-delay="2">
+      <div class="chart-label">Wettbewerbsvergleich — Kompetenzabdeckung</div>
+      <div class="chart-title" style="margin-bottom:0.3rem;">Radar-Analyse: Welcher Anbieter kann was?</div>
+      <div class="chart-sub">Bewertung 1–5 je Dimension. Kein Wettbewerber deckt alle vier Felder ab.</div>
+      <div style="max-width:500px;margin:0 auto;height:320px;position:relative;">
+        <canvas id="c-radar"></canvas>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ PROFILES ════════════════════ -->
+<section id="profiles">
+  <div class="profiles-wrap">
+    <div class="profiles-header">
+      <div class="section-label reveal">05 — Zielkunden</div>
+      <h2 class="section-h reveal" data-delay="1">Vier Segmente.<br>Eine Methode.</h2>
+      <p class="section-sub reveal" data-delay="2">Die idealen ersten Kunden im Wiener Markt — mit konkreten Budgets und Schmerzpunkten.</p>
+    </div>
+    <div class="profiles-grid reveal" data-delay="3">
+
+      <div class="profile-card" id="pc-1">
+        <div class="profile-icon">🛒</div>
+        <div class="profile-badge pb-prim">Primär</div>
+        <div class="profile-name">E-Commerce / Retail</div>
+        <div class="profile-size">€1–10 Mio. Umsatz · 5–30 MA</div>
+        <div class="profile-budget">€3.500–8.000 / Mo</div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Content-Hunger</span><span>95 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="95"></div></div>
+        </div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Foto/Video-Bedarf</span><span>90 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="90"></div></div>
+        </div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Retainer-Bereitschaft</span><span>75 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="75"></div></div>
+        </div>
+        <div class="profile-pain">„Unsere Konkurrenten haben besseren Content, obwohl wir das bessere Produkt haben."</div>
+      </div>
+
+      <div class="profile-card" id="pc-2">
+        <div class="profile-icon">🏨</div>
+        <div class="profile-badge pb-prim">Primär</div>
+        <div class="profile-name">Tourismus / Hotellerie</div>
+        <div class="profile-size">€2–20 Mio. Umsatz · 50–150 MA</div>
+        <div class="profile-budget">€2.500–5.500 / Mo</div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Content-Hunger</span><span>88 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="88"></div></div>
+        </div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Instagram-Relevanz</span><span>92 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="92"></div></div>
+        </div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Retainer-Bereitschaft</span><span>70 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="70"></div></div>
+        </div>
+        <div class="profile-pain">„Unsere Fotos sind 3 Jahre alt und das Rezeptionsteam postet auf Instagram."</div>
+      </div>
+
+      <div class="profile-card" id="pc-3">
+        <div class="profile-icon">💪</div>
+        <div class="profile-badge pb-prim">Primär</div>
+        <div class="profile-name">Health / Fitness</div>
+        <div class="profile-size">€500K–5 Mio. Umsatz · 5–30 MA</div>
+        <div class="profile-budget">€2.500–5.500 / Mo</div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Content-Hunger</span><span>98 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="98"></div></div>
+        </div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Social-Media-Affinität</span><span>95 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="95"></div></div>
+        </div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Retainer-Bereitschaft</span><span>80 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="80"></div></div>
+        </div>
+        <div class="profile-pain">„Unsere Trainer filmen mit dem Handy. Das sieht man."</div>
+      </div>
+
+      <div class="profile-card" id="pc-4">
+        <div class="profile-icon">🏭</div>
+        <div class="profile-badge pb-sec">Sekundär</div>
+        <div class="profile-name">B2B / Industrie</div>
+        <div class="profile-size">€5–50 Mio. Umsatz · 30–250 MA</div>
+        <div class="profile-budget">€5.500–9.500 / Mo</div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>LinkedIn-Bedarf</span><span>90 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="90"></div></div>
+        </div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Video-Potenzial</span><span>85 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="85"></div></div>
+        </div>
+        <div class="profile-meter">
+          <div class="pm-label"><span>Budget-Tiefe</span><span>85 %</span></div>
+          <div class="pm-track"><div class="pm-fill" data-w="85"></div></div>
+        </div>
+        <div class="profile-pain">„Wir haben eine Marketingabteilung aus einer Person, die Messeplakate gestaltet."</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ PACKAGES ════════════════════ -->
+<section id="packages">
+  <div class="packages-wrap">
+    <div class="packages-header">
+      <div class="section-label reveal">06 — Angebotsarchitektur</div>
+      <h2 class="section-h reveal" data-delay="1">Drei Pakete.<br>Ein System.</h2>
+      <p class="section-sub reveal" data-delay="2">Von der ersten Produktion bis zum vollintegrierten Performance-Marketing. Monatlicher Retainer, transparent paketiert.</p>
+    </div>
+    <div class="packages-grid reveal" data-delay="3">
+
+      <div class="pkg">
+        <div class="pkg-top">
+          <div class="pkg-tier">Einstieg</div>
+          <div class="pkg-name">Foundation</div>
+          <div class="pkg-price">€2.500<sub> / Monat</sub></div>
+          <div class="pkg-desc">Für Unternehmen, die professionellen Content aufbauen. Quartalsweiser Content Day, laufendes Social Management.</div>
+        </div>
+        <div class="pkg-feats">
+          <div class="pkg-feat">1× Content Day pro Quartal (Foto + Video)</div>
+          <div class="pkg-feat">KI-Aufbereitung: 8–12 Assets / Monat</div>
+          <div class="pkg-feat">Redaktionsplan + Captions (2 Plattformen)</div>
+          <div class="pkg-feat">Monatliches Basis-Reporting</div>
+          <div class="pkg-feat">Jour fixe 1× / Monat</div>
+        </div>
+        <div class="pkg-foot">
+          <button class="pkg-btn">Anfragen</button>
+        </div>
+      </div>
+
+      <div class="pkg featured">
+        <div class="pkg-top">
+          <div class="pkg-tier">Wachstum</div>
+          <div class="pkg-name">Content Engine</div>
+          <div class="pkg-price">€5.500<sub> / Monat</sub></div>
+          <div class="pkg-desc">Ein Content Day pro Monat. KI-Weiterverarbeitung zu vollem Social-Kalender. Performance-Basis inklusive.</div>
+        </div>
+        <div class="pkg-feats">
+          <div class="pkg-feat">1× Content Day / Monat (Foto + Video + Planung)</div>
+          <div class="pkg-feat">KI-Repurposing: 20–30 Assets / Monat</div>
+          <div class="pkg-feat">Redaktionsplanung + Copywriting (3–4 Plattformen)</div>
+          <div class="pkg-feat">Community Management</div>
+          <div class="pkg-feat">Basis Paid Ads bis €3K Mediabudget</div>
+          <div class="pkg-feat">Performance-Reporting mit Business-KPIs</div>
+          <div class="pkg-feat">Strategie-Session 1× / Quartal</div>
+        </div>
+        <div class="pkg-foot">
+          <button class="pkg-btn">Anfragen</button>
+        </div>
+      </div>
+
+      <div class="pkg">
+        <div class="pkg-top">
+          <div class="pkg-tier">Vollintegration</div>
+          <div class="pkg-name">Growth System</div>
+          <div class="pkg-price">€9.500<sub> / Monat</sub></div>
+          <div class="pkg-desc">Vollständige Content-Performance-Verbindung. Produktion, KI-Verwertung, Kampagnenmanagement aus einer Hand.</div>
+        </div>
+        <div class="pkg-feats">
+          <div class="pkg-feat">2× Content Days / Monat (Foto + Video)</div>
+          <div class="pkg-feat">KI-Repurposing + Creative Testing</div>
+          <div class="pkg-feat">Full Social Management (4+ Plattformen)</div>
+          <div class="pkg-feat">Paid Ads Management (Meta, Google, LinkedIn)</div>
+          <div class="pkg-feat">Kampagnensteuerung + Media Buying</div>
+          <div class="pkg-feat">Business-KPI Reporting + Strategieberatung</div>
+          <div class="pkg-feat">Optional: Protagonisten-Koordination</div>
+        </div>
+        <div class="pkg-foot">
+          <button class="pkg-btn">Anfragen</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ CASES ════════════════════ -->
+<section id="cases">
+  <div class="cases-wrap">
+    <div class="cases-header">
+      <div class="section-label reveal">07 — Case Visualisierungen</div>
+      <h2 class="section-h reveal" data-delay="1">Was das System<br>in der Praxis leistet.</h2>
+      <p class="section-sub reveal" data-delay="2">Drei Beispiel-Szenarien — modelliert auf Basis realer Marktdaten.</p>
+    </div>
+
+    <div class="case-tabs reveal" data-delay="3">
+      <div class="case-tab active" onclick="switchCase('hotel')">Wiener Hotel</div>
+      <div class="case-tab" onclick="switchCase('ecom')">E-Commerce Brand</div>
+      <div class="case-tab" onclick="switchCase('fitness')">Fitness Studio</div>
+    </div>
+
+    <div id="case-hotel" class="case-panel active reveal" data-delay="4">
+      <div class="case-context">
+        <div class="case-badge">Tourismus · Foundation → Content Engine</div>
+        <div class="case-name">4-Sterne-Boutique-Hotel, Wien Innenstadt</div>
+        <div class="case-desc">Ein innerstädtisches Hotel mit 80 Zimmern, veraltetem Bildmaterial und ohne aktive Social-Media-Strategie startet mit dem Foundation-Paket.</div>
+        <div class="case-metrics">
+          <div class="cm-block"><div class="cm-n">+28%</div><div class="cm-l">Instagram<br>Engagement</div></div>
+          <div class="cm-block"><div class="cm-n">+12%</div><div class="cm-l">Direct Booking<br>Rate (Monat 4)</div></div>
+          <div class="cm-block"><div class="cm-n">4,8×</div><div class="cm-l">Content-Output<br>vs. vorher</div></div>
+        </div>
+      </div>
+      <div class="case-timeline" id="tl-hotel">
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 1</div><div class="tl-event">Onboarding, Brand-Audit, erster Content Day — 70 Fotos, 8 Videos, komplette Instagram-Bibliothek für 6 Wochen.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 2</div><div class="tl-event">KI-Repurposing startet: 12 Reels aus 3 Videos. Redaktionsplan läuft. Erste organische Reichweitensteigerung +18 %.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 3</div><div class="tl-event">Erster Quarterly Review. Direct Booking Rate steigt. Upsell-Gespräch: Saisonkampagne Weihnachten/NYE mit Paid Ads.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 4–6</div><div class="tl-event">Upgrade auf Content Engine. Paid Social für Zimmer-Buchungen. Auslastung Q4 auf 87 %. ROI-Report bestätigt Mehrumsatz.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="case-ecom" class="case-panel reveal" data-delay="4">
+      <div class="case-context">
+        <div class="case-badge">E-Commerce · Content Engine</div>
+        <div class="case-name">Österreichische D2C-Sportswear-Brand</div>
+        <div class="case-desc">Eine wachsende österreichische D2C-Marke für Premium-Sportswear mit €2 Mio. Jahresumsatz und hohem Ad-Spend, aber schwachem Creative-Material.</div>
+        <div class="case-metrics">
+          <div class="cm-block"><div class="cm-n">3,2×</div><div class="cm-l">ROAS Meta<br>Ads (Monat 6)</div></div>
+          <div class="cm-block"><div class="cm-n">+45%</div><div class="cm-l">Creative Asset<br>Volumen</div></div>
+          <div class="cm-block"><div class="cm-n">-38%</div><div class="cm-l">Cost per<br>Acquisition</div></div>
+        </div>
+      </div>
+      <div class="case-timeline" id="tl-ecom">
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 1</div><div class="tl-event">Creative Audit — bestehende Ads haben CTR von 0,8 %. Erster Content Day mit Athleten-Shooting, Produktshots, 6 UGC-Style Reels.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 2</div><div class="tl-event">30 Assets aus KI-Repurposing. A/B-Testing startet. CTR steigt auf 1,9 %. Neue Creative-Varianten every 2 Wochen.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 4</div><div class="tl-event">ROAS steigt durch bessere Creatives von 1,8 auf 2,6. CPA sinkt um 38 %. Organisch: 12K neue Follower.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 6</div><div class="tl-event">ROAS 3,2. Jahresplan verlängert. Launch-Kampagne für neue Kollektion geplant. Retainer-Erweiterung um LinkedIn.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="case-fitness" class="case-panel reveal" data-delay="4">
+      <div class="case-context">
+        <div class="case-badge">Health/Fitness · Foundation → Growth</div>
+        <div class="case-name">Boutique-Fitness-Studio, Wien Bezirk</div>
+        <div class="case-desc">Ein Premium-Fitness-Konzept mit 3 Standorten kämpft gegen Ketten-Discounter und braucht eine starke visuelle Identität und Mitglieder-Recruiting.</div>
+        <div class="case-metrics">
+          <div class="cm-block"><div class="cm-n">+67</div><div class="cm-l">Neue Mitglieder<br>(3 Monate)</div></div>
+          <div class="cm-block"><div class="cm-n">+89%</div><div class="cm-l">Instagram<br>Reichweite</div></div>
+          <div class="cm-block"><div class="cm-n">€8,40</div><div class="cm-l">Cost per Lead<br>via Instagram</div></div>
+        </div>
+      </div>
+      <div class="case-timeline" id="tl-fitness">
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 1</div><div class="tl-event">Foto-/Video-Shooting mit Trainern und Mitgliedern als Testimonials. Brand-Story-Video, 40+ Lifestyle-Fotos, Behind-the-Scenes-Reels.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 2</div><div class="tl-event">Redaktionsplan läuft. 3 Posts/Woche. Erste Instagram-Kampagne für Probetraining — 127 Leads bei €8,40 CPL.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 3</div><div class="tl-event">67 neue Mitgliedschaften aus Social-Ads. ROI = 8,2× des Retainer-Werts. Employer-Branding-Tag als Add-on gebucht.</div></div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-left"><div class="tl-dot"></div><div class="tl-line"></div></div>
+          <div><div class="tl-month">Monat 4–6</div><div class="tl-event">Upgrade auf Growth System. 4. Standort eröffnet mit Launch-Kampagne. Content-Bibliothek mit 180+ Assets.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ GTM ════════════════════ -->
+<section id="gtm">
+  <div class="gtm-wrap">
+    <div class="gtm-header">
+      <div class="section-label reveal">08 — Go-to-Market</div>
+      <h2 class="section-h reveal" data-delay="1">6 Monate.<br>Drei Phasen.</h2>
+      <p class="section-sub reveal" data-delay="2">Von Netzwerk-Aktivierung zu systematischer Akquise zu Retainer-Wachstum — mit konkreten Meilensteinen.</p>
+    </div>
+    <div class="gtm-phases reveal" data-delay="3">
+      <div class="gtm-phase">
+        <div class="phase-num">01</div>
+        <div class="phase-period">Monat 1–2 · Launch</div>
+        <div class="phase-goal">Netzwerk aktivieren, erste Retainer sichern</div>
+        <ul class="phase-actions">
+          <li>Content-System-Framework dokumentieren und benennen</li>
+          <li>20 Ziel-Prospects pro Partner identifizieren</li>
+          <li>2–3 Founding-Partner-Kunden mit Onboarding starten</li>
+          <li>LinkedIn-Posting aller drei Partner (3×/Woche)</li>
+          <li>BNI Wien Chapter beitreten</li>
+          <li>Eigenen Content Day als Showcase durchführen</li>
+        </ul>
+        <div class="phase-kpi">
+          <div class="phase-kpi-label">Ziel-KPI Monat 2</div>
+          <div class="phase-kpi-val">MRR €7.500–12.500 · 3–5 Retainer</div>
+        </div>
+      </div>
+      <div class="gtm-phase">
+        <div class="phase-num">02</div>
+        <div class="phase-period">Monat 3–4 · Skalierung</div>
+        <div class="phase-goal">Case Studies publizieren, Akquise systematisieren</div>
+        <ul class="phase-actions">
+          <li>Erste Case Study mit Ergebnissen publizieren</li>
+          <li>DMVÖ B2B Marketing Forum (23. April) besuchen</li>
+          <li>LinkedIn-Outreach: 50 qualifizierte Prospects/Monat</li>
+          <li>Handelsverband-Mitgliedschaft für E-Commerce</li>
+          <li>ÖHV-Netzwerk für Tourismus aufbauen</li>
+          <li>Erstes QBR mit Founding-Kunden → Upsell</li>
+        </ul>
+        <div class="phase-kpi">
+          <div class="phase-kpi-label">Ziel-KPI Monat 4</div>
+          <div class="phase-kpi-val">MRR €15.000–22.000 · 6–8 Retainer</div>
+        </div>
+      </div>
+      <div class="gtm-phase">
+        <div class="phase-num">03</div>
+        <div class="phase-period">Monat 5–6 · Systematisierung</div>
+        <div class="phase-goal">Prozesse skalieren, Referral-Motor starten</div>
+        <ul class="phase-actions">
+          <li>Referral-Programm formalisieren (10 % Jahreskommission)</li>
+          <li>eCommerce Day (11. Juni) als Showcase nutzen</li>
+          <li>ViennaUP (18.–22. Mai) für Startup-Kontakte</li>
+          <li>Branchenspezifische Landing Pages erstellen</li>
+          <li>OMX/SEOkomm Speaker-Bewerbung einreichen</li>
+          <li>Junior-Kapazität evaluieren (ab 10+ Kunden)</li>
+        </ul>
+        <div class="phase-kpi">
+          <div class="phase-kpi-label">Ziel-KPI Monat 6</div>
+          <div class="phase-kpi-val">MRR €20.000–30.000 · 8–12 Retainer</div>
+        </div>
+      </div>
+    </div>
+    <div class="gtm-chart-wrap reveal" data-delay="4">
+      <div class="gc-header">
+        <div>
+          <div class="gc-label">12-Monats-Wachstumsszenario</div>
+          <div class="gc-title">Monatlicher Retainer-Umsatz — Basis-Szenario</div>
+        </div>
+        <div class="gc-target">
+          <div>€360K+</div>
+          <div class="gc-target-l">Year-1-Jahresumsatz (Basis)</div>
+        </div>
+      </div>
+      <div class="gtm-chart-h"><canvas id="c-growth"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ PARTNERS ════════════════════ -->
+<section id="partners">
+  <div class="partners-wrap">
+    <div class="partners-header">
+      <div class="section-label reveal">09 — Das Team</div>
+      <h2 class="section-h reveal" data-delay="1">Drei Experten.<br>Eine Struktur.</h2>
+      <p class="section-sub reveal" data-delay="2">Etablierte Spezialisten, die als integriertes System liefern — nicht als Sammelsurium von Freelancern.</p>
+    </div>
+    <div class="partners-grid reveal" data-delay="3">
+      <div class="partner-card">
+        <div class="partner-num">Partner 01</div>
+        <div class="partner-name">Sportsedition</div>
+        <div class="partner-role">Performance Marketing & Strategie</div>
+        <div class="partner-skills">
+          <span class="partner-skill">Meta Ads</span>
+          <span class="partner-skill">Google Ads</span>
+          <span class="partner-skill">LinkedIn Ads</span>
+          <span class="partner-skill">n8n Automation</span>
+          <span class="partner-skill">Reporting</span>
+          <span class="partner-skill">KI-Workflows</span>
+        </div>
+        <div class="partner-desc">Performance Marketing Agentur mit Fokus auf ROI-messbare Kampagnen, Automatisierungsworkflows und strategische Kundenbetreuung im DACH-Raum.</div>
+        <a class="partner-url" href="https://sportsedition.at" target="_blank">sportsedition.at ↗</a>
+      </div>
+      <div class="partner-card">
+        <div class="partner-num">Partner 02</div>
+        <div class="partner-name">Stefan Joham</div>
+        <div class="partner-role">Fotografie & Creative Direction</div>
+        <div class="partner-skills">
+          <span class="partner-skill">Portraitfotografie</span>
+          <span class="partner-skill">Produktfotografie</span>
+          <span class="partner-skill">Brand Shoots</span>
+          <span class="partner-skill">Sport & Action</span>
+          <span class="partner-skill">Employer Branding</span>
+        </div>
+        <div class="partner-desc">Professioneller Fotograf mit tiefem Netzwerk in der Sport-, Health- und Business-Community. Liefert Bildmaterial, das nicht nur gut aussieht, sondern konvertiert.</div>
+        <a class="partner-url" href="https://stefanjoham.com" target="_blank">stefanjoham.com ↗</a>
+      </div>
+      <div class="partner-card">
+        <div class="partner-num">Partner 03</div>
+        <div class="partner-name">Photoangelo</div>
+        <div class="partner-role">Video Production & Storytelling</div>
+        <div class="partner-skills">
+          <span class="partner-skill">Social Video</span>
+          <span class="partner-skill">Reels & TikTok</span>
+          <span class="partner-skill">Imagefilm</span>
+          <span class="partner-skill">Motion Graphics</span>
+          <span class="partner-skill">Schnitt & Color</span>
+        </div>
+        <div class="partner-desc">Video-Produktionsagentur mit Expertise in kurzen, plattformoptimierten Formaten für Social Media sowie Full-Service-Imagefilmproduktion.</div>
+        <a class="partner-url" href="https://photoangelo.at" target="_blank">photoangelo.at ↗</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ CTA ════════════════════ -->
+<section id="cta">
+  <div class="cta-bg"></div>
+  <div class="cta-wrap">
+    <div class="section-label reveal" style="justify-content:center;display:flex;">10 — Nächster Schritt</div>
+    <h2 class="cta-h reveal" data-delay="1">Bereit, das<br><span class="gold">System aufzubauen?</span></h2>
+    <p class="cta-sub reveal" data-delay="2">Erstes Gespräch kostenlos. Kein Pitch. Kein Druck.<br>Wir zeigen, wie das System für euer Unternehmen funktioniert.</p>
+    <div class="cta-btns reveal" data-delay="3">
+      <button class="btn-primary">Gespräch vereinbaren</button>
+      <button class="btn-secondary">Strategie-Dokument anfragen</button>
+    </div>
+  </div>
+</section>
+
+<footer id="footer">
+  <div class="footer-logo">Content System Partner · Wien · 2026</div>
+  <div class="footer-note">Sportsedition × Stefan Joham × Photoangelo · Vertraulich</div>
+  <div class="footer-links">
+    <a class="footer-link" href="#hero">Top</a>
+    <a class="footer-link" href="#matrix">Matrix</a>
+    <a class="footer-link" href="#packages">Pakete</a>
+  </div>
+</footer>
+
+<!-- ════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════ -->
+<script>
+/* ──── CURSOR ──── */
+const dot = document.getElementById('cursor-dot');
+const ring = document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{ mx=e.clientX; my=e.clientY; dot.style.left=mx+'px'; dot.style.top=my+'px'; });
+(function anim(){ rx+=(mx-rx)*0.12; ry+=(my-ry)*0.12; ring.style.left=rx+'px'; ring.style.top=ry+'px'; requestAnimationFrame(anim); })();
+
+/* ──── NAV ──── */
+window.addEventListener('scroll',()=>{
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 80);
+});
+
+/* ──── SCROLL REVEAL ──── */
+const reveals = document.querySelectorAll('.reveal,.reveal-left,.reveal-right,.reveal-scale');
+const obs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('visible'); });
+},{threshold:0.12});
+reveals.forEach(r=>obs.observe(r));
+
+/* ──── HERO PARTICLE CANVAS ──── */
+(function(){
+  const canvas = document.getElementById('hero-canvas');
+  const ctx = canvas.getContext('2d');
+  let W,H,particles=[];
+  function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; }
+  resize(); window.addEventListener('resize',resize);
+  const N=70;
+  for(let i=0;i<N;i++) particles.push({
+    x:Math.random()*1000,y:Math.random()*800,
+    vx:(Math.random()-0.5)*0.3,vy:(Math.random()-0.5)*0.3,
+    r:Math.random()*1.5+0.3,
+    o:Math.random()*0.25+0.05
+  });
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // connecting lines
+    for(let i=0;i<particles.length;i++){
+      for(let j=i+1;j<particles.length;j++){
+        const dx=particles[i].x-particles[j].x, dy=particles[i].y-particles[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        if(d<160){
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x,particles[i].y);
+          ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.strokeStyle=`rgba(201,168,112,${(1-d/160)*0.08})`;
+          ctx.lineWidth=0.5;
+          ctx.stroke();
+        }
+      }
+    }
+    particles.forEach(p=>{
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(201,168,112,${p.o})`;
+      ctx.fill();
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1;
+      if(p.y<0||p.y>H)p.vy*=-1;
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ──── POSITIONING MATRIX ──── */
+(function(){
+  const competitors = [
+    {id:'new',name:'Content System Partner',x:0.82,y:0.88,r:22,color:'#C9A870',desc:'Die neue Agentur — volle Abdeckung beider Achsen.',primary:true},
+    {id:'social',name:'Social Media Agenturen',x:0.32,y:0.42,r:16,color:'rgba(255,255,255,0.25)',desc:'Content via Smartphone. Kein professionelles Foto/Video.'},
+    {id:'content',name:'Content Agenturen (COPE)',x:0.22,y:0.78,r:15,color:'rgba(255,255,255,0.2)',desc:'Starker Content, kein Performance Marketing.'},
+    {id:'perf',name:'Performance Agenturen',x:0.78,y:0.18,r:15,color:'rgba(255,255,255,0.2)',desc:'Starke Kampagnen, kein eigenes Creative-Material.'},
+    {id:'prod',name:'Foto/Video Produktion',x:0.18,y:0.85,r:14,color:'rgba(255,255,255,0.18)',desc:'Exzellente Produktion, kein Distribution oder Paid Media.'},
+    {id:'full',name:'Full-Service Agenturen',x:0.48,y:0.48,r:13,color:'rgba(255,255,255,0.15)',desc:'Mittelmäßig in allem. Kein klares USP.'},
+    {id:'b2b',name:'B2B Marketing (B2IMPACT)',x:0.62,y:0.55,r:12,color:'rgba(255,255,255,0.15)',desc:'B2B Content ohne professionelle Produktion.'},
+  ];
+
+  const container = document.getElementById('matrix-viz');
+  const tooltip = document.getElementById('matrix-tooltip');
+
+  competitors.forEach(c=>{
+    const el = document.createElement('div');
+    el.className='matrix-dot';
+    el.style.cssText=`left:${c.x*100}%;top:${(1-c.y)*100}%;width:${c.r*2}px;height:${c.r*2}px;`;
+    el.innerHTML=`<div class="dot-inner" style="background:${c.color};opacity:${c.primary?1:0.6};border-radius:50%;${c.primary?'box-shadow:0 0 24px rgba(201,168,112,0.5)':''};"></div>`;
+    if(!c.primary){
+      const lbl=document.createElement('div');
+      lbl.className='dot-label';
+      lbl.textContent=c.name;
+      lbl.style.cssText=`font-size:0.55rem;font-family:'DM Sans',sans-serif;color:rgba(248,245,239,0.4);white-space:nowrap;position:absolute;top:${c.r*2+4}px;left:50%;transform:translateX(-50%);`;
+      el.appendChild(lbl);
+    } else {
+      const lbl=document.createElement('div');
+      lbl.style.cssText=`position:absolute;top:${c.r*2+4}px;left:50%;transform:translateX(-50%);font-family:'Cinzel',serif;font-size:0.6rem;letter-spacing:0.1em;color:#C9A870;white-space:nowrap;text-shadow:0 0 12px rgba(201,168,112,0.5);`;
+      lbl.textContent=c.name;
+      el.appendChild(lbl);
+    }
+    el.addEventListener('mouseenter',ev=>{
+      document.getElementById('tt-name').textContent=c.name;
+      document.getElementById('tt-desc').textContent=c.desc;
+      const rect=container.getBoundingClientRect();
+      const bx=c.x*rect.width, by=(1-c.y)*rect.height;
+      tooltip.style.left=(bx>rect.width/2?bx-220:bx+10)+'px';
+      tooltip.style.top=(by>rect.height/2?by-80:by+10)+'px';
+      tooltip.classList.add('show');
+    });
+    el.addEventListener('mouseleave',()=>tooltip.classList.remove('show'));
+    container.appendChild(el);
+  });
+
+  // legend
+  const legend=document.getElementById('matrix-legend');
+  competitors.forEach(c=>{
+    const item=document.createElement('div');
+    item.style.cssText='display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;';
+    item.innerHTML=`<div style="width:${c.primary?12:8}px;height:${c.primary?12:8}px;border-radius:50%;background:${c.color};flex-shrink:0;${c.primary?'box-shadow:0 0 8px rgba(201,168,112,0.5);':''}"></div><div style="font-size:0.75rem;font-weight:300;color:${c.primary?'#C9A870':'rgba(248,245,239,0.45)'};line-height:1.4;">${c.name}</div>`;
+    legend.appendChild(item);
+  });
+})();
+
+/* ──── FLOW STEPS ──── */
+function selectStep(el){
+  document.querySelectorAll('.flow-step').forEach(s=>s.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* ──── PROFILE METERS ──── */
+const meterObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.querySelectorAll('.pm-fill').forEach(f=>{
+        f.style.width=f.dataset.w+'%';
+      });
+    }
+  });
+},{threshold:0.3});
+document.querySelectorAll('.profile-card').forEach(c=>meterObs.observe(c));
+
+/* ──── CASE TABS ──── */
+function switchCase(id){
+  document.querySelectorAll('.case-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.case-panel').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('case-'+id).classList.add('active');
+  animateTimeline(id);
+}
+function animateTimeline(id){
+  const items=document.querySelectorAll(`#tl-${id} .tl-item`);
+  items.forEach(item=>item.classList.remove('show'));
+  items.forEach((item,i)=>setTimeout(()=>item.classList.add('show'),(i+1)*200));
+}
+// Trigger initial timeline
+setTimeout(()=>animateTimeline('hotel'),600);
+
+const caseObs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{ if(e.isIntersecting) animateTimeline('hotel'); });
+},{threshold:0.3,once:true});
+const caseSec=document.getElementById('cases');
+if(caseSec) caseObs.observe(caseSec);
+
+/* ──── CHARTS ──── */
+Chart.defaults.color='rgba(248,245,239,0.4)';
+Chart.defaults.borderColor='rgba(255,255,255,0.06)';
+Chart.defaults.font.family="'DM Sans', sans-serif";
+const G='#C9A870', G2='rgba(201,168,112,0.3)', D='rgba(255,255,255,0.04)';
+
+// Potential bar chart
+const cpCtx=document.getElementById('c-potential');
+if(cpCtx) new Chart(cpCtx,{
+  type:'bar',
+  data:{
+    labels:['E-Commerce','Tourismus','Health/Fitness','B2B Industrie'],
+    datasets:[
+      {label:'Min. Jahreswert (K€)',data:[36,30,30,66],backgroundColor:'rgba(201,168,112,0.2)',borderColor:G,borderWidth:1},
+      {label:'Max. Jahreswert (K€)',data:[96,66,66,114],backgroundColor:'rgba(201,168,112,0.6)',borderColor:G,borderWidth:0}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:16,usePointStyle:true,boxWidth:8}}},
+    scales:{
+      x:{ticks:{font:{size:10}},grid:{display:false}},
+      y:{ticks:{font:{size:10},callback:v=>v+'K'},grid:{color:'rgba(255,255,255,0.04)'}}
+    }
+  }
+});
+
+// Radar
+const radarCtx=document.getElementById('c-radar');
+if(radarCtx) new Chart(radarCtx,{
+  type:'radar',
+  data:{
+    labels:['Foto/Video\nProduktion','Performance\nMarketing','KI-Content\nRecycling','Strategie-\nberatung','Retainer-\nModell'],
+    datasets:[
+      {label:'Social Media Agenturen',data:[2,3,1,2,3],borderColor:'rgba(255,255,255,0.2)',backgroundColor:'rgba(255,255,255,0.02)',borderWidth:1,pointRadius:2},
+      {label:'Performance Agenturen',data:[1,5,2,2,4],borderColor:'rgba(255,100,100,0.4)',backgroundColor:'rgba(255,100,100,0.03)',borderWidth:1,pointRadius:2},
+      {label:'Foto/Video Produktion',data:[5,1,1,1,2],borderColor:'rgba(100,150,255,0.4)',backgroundColor:'rgba(100,150,255,0.03)',borderWidth:1,pointRadius:2},
+      {label:'Content System Partner ★',data:[5,5,4,4,5],borderColor:G,backgroundColor:'rgba(201,168,112,0.1)',borderWidth:2.5,pointRadius:5,pointBackgroundColor:G,pointBorderColor:'#0A0A0A',pointBorderWidth:2}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    scales:{r:{min:0,max:5,ticks:{stepSize:1,font:{size:9},backdropColor:'transparent',color:'rgba(255,255,255,0.2)'},grid:{color:'rgba(255,255,255,0.06)'},angleLines:{color:'rgba(255,255,255,0.05)'},pointLabels:{font:{size:10,family:"'DM Sans',sans-serif"},color:'rgba(248,245,239,0.5)'}}},
+    plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:16,usePointStyle:true,boxWidth:8}}}
+  }
+});
+
+// Growth chart
+const gcCtx=document.getElementById('c-growth');
+if(gcCtx) new Chart(gcCtx,{
+  type:'line',
+  data:{
+    labels:['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'],
+    datasets:[
+      {label:'Basis-Szenario (€)',data:[5500,11000,16500,22000,25000,28000,31000,33000,36000,38000,40000,42000],borderColor:G,backgroundColor:'rgba(201,168,112,0.05)',fill:true,tension:0.4,borderWidth:2,pointRadius:4,pointBackgroundColor:G,pointBorderColor:'#0A0A0A',pointBorderWidth:2},
+      {label:'Optimistisch (€)',data:[8000,16000,22000,28000,33000,38000,43000,48000,52000,55000,58000,62000],borderColor:'rgba(201,168,112,0.35)',backgroundColor:'transparent',fill:false,tension:0.4,borderWidth:1,borderDash:[4,4],pointRadius:2}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:16,usePointStyle:true,boxWidth:8}}},
+    scales:{
+      x:{ticks:{font:{size:10}},grid:{display:false}},
+      y:{ticks:{font:{size:10},callback:v=>'€'+v.toLocaleString('de-AT')},grid:{color:'rgba(255,255,255,0.04)'}}
+    }
+  }
+});
+</script>
+</body>
+</html>
